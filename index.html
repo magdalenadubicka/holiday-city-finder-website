@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>My Form</title>
+	<link rel="stylesheet" type="text/css" href="styles.css" />
+</head>
+<body>
+	<div class="container">
+        <div class="instructions">
+            <h2>Holiday Spot Finder</h2>
+            <p>Welcome to our Holiday Spot Finder! Choose dates within the next 16 days, and we'll present you with three handpicked, popular European destinations. Our suggestions are based on the best weather conditions and the most affordable booking prices during your selected travel period. Enjoy discovering your perfect getaway!</p>
+        </div>
+
+        <form>
+            <label for="checkin">Checkin Date:</label>
+            <input type="date" id="checkin" name="checkin" />
+
+            <label for="checkout">Checkout Date:</label>
+            <input type="date" id="checkout" name="checkout" />
+
+            <label for="adults">Adults:</label>
+            <input type="number" id="adults" name="adults" required min="1" />
+
+            <label for="children">Children:</label>
+            <input type="number" id="children" name="children" required min="0" />
+
+            <button type="submit" id="submit-btn">Submit</button>
+        </form>
+    </div>
+	<div class="explanation">
+		 <h2>Your results are here</h2>
+		 <p>We've carefully analyzed the weather conditions in various cities, considering factors such as sunshine, rainfall, and cloud coverage. After evaluating the temperature ranges, we have selected the top 3 cities with the most favorable weather conditions for your travel preferences.</p> <p>Additionally, we have taken into account your budget needs and have chosen the 3 cheapest hotel bookings in each city that meet the specified criteria. This way, you can enjoy your trip without breaking the bank.</p> 
+	</div>
+	<div class="filters-info">
+
+	</div>
+	<div id="result-container"></div>
+	<div class="loader-container">
+		<div class="loader"></div>
+	</div>
+
+
+	<script>
+
+		function formatDateToStr(dateString) {
+			const date = new Date(dateString);
+			const year = date.getFullYear();
+			const monthNames = [
+			'January', 'February', 'March', 'April', 'May', 'June',
+			'July', 'August', 'September', 'October', 'November', 'December'
+			];
+			const month = monthNames[date.getMonth()];
+			const day = date.getDate();
+			return `${month} ${day}, ${year}`;
+		}
+		function validateForm() {
+			var checkinDate = new Date(document.getElementById("checkin").value);
+			var checkoutDate = new Date(document.getElementById("checkout").value);
+			var today = new Date();
+
+			// Check if checkin date is at least today's date
+			if (checkinDate < today) {
+				alert("Checkin date cannot be earlier than today.");
+				return false;
+			}
+
+			// Check if checkout date is no later than 16 days from today's date
+			var maxCheckoutDate = new Date();
+			maxCheckoutDate.setDate(today.getDate() + 16);
+			if (checkoutDate > maxCheckoutDate) {
+				alert("Checkout date cannot be later than 16 days from today.");
+				return false;
+			}
+
+			// Check if checkin date is before checkout date
+			if (checkinDate >= checkoutDate) {
+				alert("Checkout date must be after checkin date.");
+				return false;
+			}
+
+			// Check if adult number is at least 1
+			var adultNumber = parseInt(document.getElementById("adults").value);
+			if (adultNumber < 1) {
+				alert("Adult number must be at least 1.");
+				return false;
+			}
+
+			// Check if children number is at least 0
+			var childrenNumber = parseInt(document.getElementById("children").value);
+			if (childrenNumber < 0) {
+				alert("Children number cannot be negative.");
+				return false;
+			}
+
+			return true;
+		}
+		function formatDate(date) {
+			const year = date.getFullYear();
+			const month = date.getMonth() + 1;
+			const day = date.getDate();
+			return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+		}
+
+		function parseDict(inputObj) {
+			const outputArr = [];
+
+			for (const [key, value] of Object.entries(inputObj)) {
+				outputArr.push({"name": key, "data": value});
+			}
+
+			return outputArr;
+			}
+		const form = document.querySelector('form');
+		const submitBtn = document.querySelector('#submit-btn');
+		const loader = document.querySelector('.loader-container');
+		const resultContainer = document.querySelector('#result-container');
+        const firstPage = document.querySelector('.container');
+		const explanation = document.querySelector('.explanation');
+		const filtersInfo = document.querySelector('.filters-info');
+		loader.style.display = 'none';
+		filtersInfo.style.display = 'none';
+		explanation.style.display = 'none';
+
+		form.addEventListener('submit', (event) => {
+			event.preventDefault();
+			
+			if (!validateForm()) {
+				return; // Exit early if form is not valid
+			}
+			console.log("WF");
+			// Show loader
+            firstPage.style.display = 'none';
+            // form.style.display = 'none';
+			loader.style.display = 'block';
+
+			// Disable submit button
+			submitBtn.disabled = true;
+			console.log('As')
+			// Get form data
+			// const checkin = document.querySelector('#checkin').value;
+			// const checkout = document.querySelector('#checkout').value;
+			const group_adults = document.querySelector('#adults').value;
+			const group_children = document.querySelector('#children').value;
+			
+			const checkinDate = new Date(document.querySelector('#checkin').value);
+			const checkoutDate = new Date(document.querySelector('#checkout').value);
+
+			const checkin = checkinDate.toISOString().slice(0, 10);
+			const checkout = checkoutDate.toISOString().slice(0, 10);
+
+			console.log(checkin, checkout)
+
+			const encodedParams = new URLSearchParams({
+				checkin: checkin,
+				checkout: checkout,
+				group_adults: group_adults,
+				group_children: group_children
+				}).toString();
+
+				console.log(`https://13.50.105.104:8000/api/vacation?${encodedParams}`);
+			// Call API
+			fetch(`https://13.50.105.104:8080/api/vacation?${encodedParams}`, { timeout: 120000 })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+                // Hide loader
+                loader.style.display = 'none';
+
+                // Enable submit button
+                submitBtn.disabled = false;
+                console.log("DONE");
+
+                // Display results
+                const results = parseDict(data.best);
+
+                const resultHtml = `
+					<div class="city-grid">
+						<div class="city">
+							<h1>${results[0].name}</h1>
+							<h2>Our city weather score: ${Math.round(results[0].data.weather_score/120)}/100</h2>
+							<div class="result-box">
+								<a href="${results[0].data.hotels[0].hotel_link}">${results[0].data.hotels[0].name}</a>
+								<p><b>Rating:</b> ${results[0].data.hotels[0].hotel_rating}</p>
+								<p><b>Price:</b> ${results[0].data.hotels[0].hotel_price} €</p>
+							</div>
+							<div class="result-box">
+								<a href="${results[0].data.hotels[1].hotel_link}">${results[0].data.hotels[1].name}</a>
+								<p><b>Rating:</b> ${results[0].data.hotels[1].hotel_rating}</p>
+								<p><b>Price:</b> ${results[0].data.hotels[1].hotel_price} €</p>
+							</div>
+							<div class="result-box">
+								<a href="${results[0].data.hotels[2].hotel_link}">${results[0].data.hotels[2].name}</a>
+								<p><b>Rating:</b> ${results[0].data.hotels[2].hotel_rating}</p>
+								<p><b>Price:</b> ${results[0].data.hotels[2].hotel_price} €</p>
+							</div>
+						</div>
+						<div class="city">
+							<h1>${results[1].name}</h1>
+							<h2>Our city weather score: ${Math.round(results[1].data.weather_score/120)}/100</h2>
+							<div class="result-box">
+								<a href="${results[1].data.hotels[0].hotel_link}">${results[1].data.hotels[0].name}</a>
+								<p><b>Rating:</b> ${results[1].data.hotels[0].hotel_rating}</p>
+								<p><b>Price:</b> ${results[1].data.hotels[0].hotel_price} €</p>
+							</div>
+							<div class="result-box">
+								<a href="${results[1].data.hotels[1].hotel_link}">${results[1].data.hotels[1].name}</a>
+								<p><b>Rating:</b> ${results[1].data.hotels[1].hotel_rating}</p>
+								<p><b>Price:</b> ${results[1].data.hotels[1].hotel_price} €</p>
+							</div>
+							<div class="result-box">
+								<a href="${results[1].data.hotels[2].hotel_link}">${results[1].data.hotels[2].name}</a>
+								<p><b>Rating:</b> ${results[1].data.hotels[2].hotel_rating}</p>
+								<p><b>Price:</b> ${results[1].data.hotels[2].hotel_price} €</p>
+							</div>
+						</div>
+						<div class="city">
+							<h1>${results[2].name}</h1>
+							<h2>Our city weather score: ${Math.round(results[2].data.weather_score/120)}/100</h2>
+							<div class="result-box">
+								<a href="${results[2].data.hotels[0].hotel_link}">${results[2].data.hotels[0].name}</a>
+								<p><b>Rating:</b> ${results[2].data.hotels[0].hotel_rating}</p>
+								<p><b>Price:</b> ${results[2].data.hotels[0].hotel_price} €</p>
+							</div>
+							<div class="result-box">
+								<a href="${results[2].data.hotels[1].hotel_link}">${results[2].data.hotels[1].name}</a>
+								<p><b>Rating:</b> ${results[2].data.hotels[1].hotel_rating}</p>
+								<p><b>Price:</b> ${results[2].data.hotels[1].hotel_price} €</p>
+							</div>
+							<div class="result-box">
+								<a href="${results[2].data.hotels[2].hotel_link}">${results[2].data.hotels[2].name}</a>
+								<p><b>Rating:</b> ${results[2].data.hotels[2].hotel_rating}</p>
+								<p><b>Price:</b> ${results[2].data.hotels[2].hotel_price} €</p>
+							</div>
+						</div>
+
+
+					</div>
+					`;
+
+				const filtersStr = `<h2>Filters</h2>
+								  <p><b>Checkin date:</b> ${formatDateToStr(checkin)}</p>
+								  <p><b>Cheout date:</b> ${formatDateToStr(checkout)}</p>
+								  <p><b>Adults:</b> ${group_adults}</p>
+								  <p><b>Children:</b> ${group_children}</p>`
+					
+				
+				console.log(filtersStr)
+				explanation.style.display = 'block';
+				filtersInfo.style.display = 'block';
+				filtersInfo.innerHTML = filtersStr;
+				console.log(explanation.innerHTML)
+                resultContainer.innerHTML = resultHtml;
+				
+            })
+            .catch(error => {
+                console.error(error);
+
+                // Hide loader
+                loader.style.display = 'none';
+
+                // Enable submit button
+                submitBtn.disabled = false;
+
+                // Display error message
+                resultContainer.innerHTML = '<p>Oops! Something went wrong. Please try again later.</p>';
+            });
+
+
+            })
+		
+    </script>
+
+</body>
+</html>
